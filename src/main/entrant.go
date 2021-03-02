@@ -9,7 +9,7 @@ type entrant struct {
 	username     string
 	rating       float64
 	gameRegCount uint8
-	internalRank float64 // 14 times larger than the 0-30 OGS scale
+	internalRank int // 14 times larger than the 0-30 OGS scale
 	displayRank  string
 }
 
@@ -23,7 +23,7 @@ func newEntrant(username string, rating float64, gameRegCount uint8) *entrant {
 	// Calculate and set internalRank
 	// This is the OGS rating-rank conversion formula multiplied
 	// by 14 to gradate ranks down to rkomi points.
-	e.internalRank = math.Log(rating/525) * 23.15 * 14
+	e.internalRank = (int)(math.Round(math.Log(rating/525) * 23.15 * 14))
 
 	// Generate and set displayRank
 	ogsRank := (math.Log(rating/525) * 23.15) - 30
