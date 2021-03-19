@@ -12,15 +12,22 @@ func main() {
 	entrants := []entrant{}
 
 	// List of Entrants
-	addEntrant("Samraku", 1763, 3, &entrants)                 // 0
-	addEntrant("illusory_deceit", 1298, 1, &entrants)         // 1
-	addEntrant("KoBa", 1784, 3, &entrants)                    // 2
-	addEntrant("teapoweredrobot", 1494, 2, &entrants)         // 3
-	addEntrant("He Who Walks in Shadows", 1755, 3, &entrants) // 4
+	addEntrant("Samraku", 1771, 4, &entrants)                 // 0
+	addEntrant("illusory_deceit", 1278, 1, &entrants)         // 1
+	addEntrant("KoBa", 1808, 3, &entrants)                    // 2 https://online-go.com/user/view/85719
+	addEntrant("teapoweredrobot", 1488, 2, &entrants)         // 3
+	addEntrant("He Who Walks in Shadows", 1775, 3, &entrants) // 4
 	addEntrant("Kaworu Nagisa", 2368, 1, &entrants)           // 5
-	addEntrant("pdg137", 1358, 1, &entrants)                  // 6
+	addEntrant("pdg137", 1391, 1, &entrants)                  // 6
+	addEntrant("wurfmau3", 2279, 7, &entrants)                // 7
+	addEntrant("DashaTabasco", 1126, 3, &entrants)            // 8
+	addEntrant("riiia", 1610, 3, &entrants)                   // 9
+	addEntrant("vyzhael", 1337, 2, &entrants)                 // \u218a
+	addEntrant("LittlePebble", 785, 1, &entrants)             // \u218b
+	addEntrant("sbk96", 1341, 1, &entrants)                   // 10
 
 	// Pair Entrants
+	fmt.Println()
 	pairings := [][]int{}
 	randPair(entrants, &pairings)
 
@@ -47,39 +54,67 @@ func matchStr(black entrant, white entrant) string {
 
 // pairs random players together until only one player has games remaining
 func randPair(entrants []entrant, pairings *[][]int) {
-
 	// initialize seed
 	rand.Seed(time.Now().UnixNano())
 
-	running := true
+	running := true // pairing players
+	finding := true // looking for a valid pairing
 	l := len(entrants)
-	p := []int{}
-	p = append(p, rand.Intn(l))
-	p = append(p, rand.Intn(l))
-	c := 0  // count of players to pair
-	n := "" // name of last player to pair
-	g := 0  // count of games to pair
+	pl := rand.Perm(l) // player list
+	c := 0             // count of players to pair
+	n := ""            // name of last player to pair
+	g := 0             // count of games to pair
 
 	for running {
-		// randomly select entrant in entrants with gameRegCount > 0
-		// randomly select different entrant in entrants with gameRegCount > 0
-		for entrants[p[0]].gameRegCount <= 0 {
-			p[0] = rand.Intn(l)
+		// check if strong prohibition of duplicate matchups works
+		for i := range pl {
+			for j := range pl {
+				if finding &&
+					i != j &&
+					entrants[pl[i]].gameRegCount > 0 &&
+					entrants[pl[j]].gameRegCount > 0 {
+					if conVal(*pairings, []int{pl[i], pl[j]}) <= 0 &&
+						conVal(*pairings, []int{pl[j], pl[i]}) <= 0 {
+
+						// pair
+						*pairings = append(*pairings, []int{pl[i], pl[j]})
+						entrants[pl[i]].gameRegCount--
+						entrants[pl[j]].gameRegCount--
+						finding = false
+					}
+				}
+			}
 		}
-		for entrants[p[1]].gameRegCount <= 0 || p[0] == p[1] {
-			p[1] = rand.Intn(l)
+
+		// check if weak prohibition of duplicate matchups works
+		if finding {
+			for i := range pl {
+				for j := range pl {
+					if finding &&
+						i != j &&
+						entrants[pl[i]].gameRegCount > 0 &&
+						entrants[pl[j]].gameRegCount > 0 &&
+						!(conVal(*pairings, []int{pl[i], pl[j]}) > 0) {
+						// pair
+						*pairings = append(*pairings, []int{pl[i], pl[j]})
+						entrants[pl[i]].gameRegCount--
+						entrants[pl[j]].gameRegCount--
+						finding = false
+					}
+				}
+			}
 		}
 
-		// add pairing to pairings
-		*pairings = append(*pairings, []int{p[0], p[1]})
+		// pair 0 with 1
+		if finding {
+			*pairings = append(*pairings, []int{pl[0], pl[1]})
+			entrants[pl[0]].gameRegCount--
+			entrants[pl[1]].gameRegCount--
+		}
 
-		// decrement both gameRegCount values
-		entrants[p[0]].gameRegCount--
-		entrants[p[1]].gameRegCount--
-
-		// re-initialize p
-		p[0] = rand.Intn(l)
-		p[1] = rand.Intn(l)
+		// reinitialize variables
+		finding = true
+		pl = rand.Perm(l)
 
 		// check if all gameRegCount <= 0
 		for _, v := range entrants {
@@ -104,4 +139,20 @@ func printPairings(entrants []entrant, pairings [][]int) {
 	for _, v := range pairings {
 		fmt.Println(matchStr(entrants[v[0]], entrants[v[1]]))
 	}
+}
+
+// Checks if a slice contains a given value and returns the number of hits
+func conVal(slice [][]int, val []int) int {
+	hits := 0
+
+	// temp := []int{0, 1}
+
+	for i := 0; i < len(slice); i++ {
+
+		if slice[i][0] == val[0] && slice[i][1] == val[1] {
+			hits++
+		}
+	}
+
+	return hits
 }
