@@ -1,5 +1,5 @@
 compile:
-	go build -o "./bin/lagrange-points-pairing" ./src/main
+	go build -o "./bin/lagrange-points-pairing" ./src
 
 run:
 	./bin/lagrange-points-pairing
