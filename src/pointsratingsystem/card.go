@@ -25,6 +25,41 @@ func NewCard(name string, xrating float64, lastPeriod int) *Card {
 	return c
 }
 
+// UpdateCard processes the W-L record for a given rating period
+// for a given card
+// volatility gives a triangular numbers approach
+func (c Card) UpdateCard(wins int, losses int, draws int, period int) {
+	// Update Volatility for periods elapsed
+	c.volatility = c.volatility + (period - c.lastPeriod) - 1
+	// put volatility in [1, 7]
+	c.volatility = int(math.Min(math.Max(float64(c.volatility), 1), 7))
+
+	// Update Volatility for W-L pairs (and draws)
+	for draws > 0 {
+		c.volatility--
+		draws--
+	}
+
+	for wins > 0 && losses > 0 {
+		c.volatility = int(math.Max(float64(c.volatility)-2, 1))
+		wins--
+		losses--
+	}
+
+	// Update rating and Volatility for remaining W/Ls
+	for wins > 0 {
+		c.rating = c.rating + c.volatility
+		c.volatility = int(math.Max(float64(c.volatility)-1, 1))
+	}
+
+	for losses > 0 {
+		c.rating = c.rating - c.volatility
+		c.volatility = int(math.Max(float64(c.volatility)-1, 1))
+	}
+
+	c.lastPeriod = period
+}
+
 // Xrtor converts an external rating to prs rating
 func Xrtor(xrating float64) int {
 	// 12 points per stone in conversion
@@ -32,10 +67,10 @@ func Xrtor(xrating float64) int {
 	return int(math.Round((math.Log(xrating/525)*23.15)-30) * 12)
 }
 
-// DisplayRanking returns prs rating in terms of kyu-dan
+// DisplayRank returns prs rating in terms of kyu-dan
 // stones are 14 points apart
 // 0 = shodan
-func (c Card) DisplayRanking() string {
+func (c Card) DisplayRank() string {
 	kdf := float64(c.rating)
 	var kda string
 
