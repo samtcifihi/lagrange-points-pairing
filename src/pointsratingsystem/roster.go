@@ -1,7 +1,9 @@
 package pointsratingsystem
 
 // Roster holds a collection of player cards in a given prs system
-type Roster []*Card
+type Roster struct {
+	list []*Card
+}
 
 // NewRoster creates a new Roster to hold player cards
 func NewRoster() *Roster {
@@ -12,7 +14,32 @@ func NewRoster() *Roster {
 func (r Roster) AddCard(name string, xrating float64, lastPeriod int) {
 	c := NewCard(name, xrating, lastPeriod)
 
-	r = append(r, c)
+	r.list = append(r.list, c)
+}
+
+// RetrieveLast returns the most recently added card
+func (r Roster) RetrieveLast() *Card {
+	return r.list[len(r.list)]
+}
+
+// Len returns the index of the most recently added card
+func (r Roster) Len() int {
+	return len(r.list)
+}
+
+// GetName returns the name for the card at list[i]
+func (r Roster) GetName(i int) string {
+	return r.list[i].name
+}
+
+// GetRating returns the rating for the card at list[i]
+func (r Roster) GetRating(i int) int {
+	return r.list[i].rating
+}
+
+// DisplayRank returns the rank in kyu-dan format for printing
+func (r Roster) DisplayRank(i int) string {
+	return r.list[i].DisplayRank()
 }
 
 // ListCards returns data for all cards for output

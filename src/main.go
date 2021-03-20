@@ -5,55 +5,48 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+
+	prs "github.com/samtcifihi/lagrange-points-pairing/src/pointsratingsystem"
 )
 
 func main() {
-	// slice of entrants
-	entrants := []entrant{}
+	roster := prs.NewRoster()
+	entries := [][]int{}  // [[card, gamereg], [card, gamereg]]
+	pairings := [][]int{} // [[cardB, cardW], [cardB, cardW]]
+
+	currentPeriod := 0 // const
 
 	// List of Entrants
-	addEntrant("Samraku", 1771, 4, &entrants)                 // 0
-	addEntrant("illusory_deceit", 1278, 1, &entrants)         // 1
-	addEntrant("KoBa", 1808, 3, &entrants)                    // 2 https://online-go.com/user/view/85719
-	addEntrant("teapoweredrobot", 1488, 2, &entrants)         // 3
-	addEntrant("He Who Walks in Shadows", 1775, 3, &entrants) // 4
-	addEntrant("Kaworu Nagisa", 2368, 1, &entrants)           // 5
-	addEntrant("pdg137", 1391, 1, &entrants)                  // 6
-	addEntrant("wurfmau3", 2279, 7, &entrants)                // 7
-	addEntrant("DashaTabasco", 1126, 3, &entrants)            // 8
-	addEntrant("riiia", 1610, 3, &entrants)                   // 9
-	addEntrant("vyzhael", 1337, 2, &entrants)                 // \u218a
-	addEntrant("LittlePebble", 785, 1, &entrants)             // \u218b
-	addEntrant("sbk96", 1341, 1, &entrants)                   // 10
+	addEntrant("Samraku", 1771, 4, currentPeriod, roster, &entries)                 // 0
+	addEntrant("illusory_deceit", 1278, 1, currentPeriod, roster, &entries)         // 1
+	addEntrant("KoBa", 1808, 3, currentPeriod, roster, &entries)                    // 2 https://online-go.com/user/view/85719
+	addEntrant("teapoweredrobot", 1488, 2, currentPeriod, roster, &entries)         // 3
+	addEntrant("He Who Walks in Shadows", 1775, 3, currentPeriod, roster, &entries) // 4
+	addEntrant("Kaworu Nagisa", 2368, 1, currentPeriod, roster, &entries)           // 5
+	addEntrant("pdg137", 1391, 1, currentPeriod, roster, &entries)                  // 6
+	addEntrant("wurfmau3", 2279, 7, currentPeriod, roster, &entries)                // 7
+	addEntrant("DashaTabasco", 1126, 3, currentPeriod, roster, &entries)            // 8
+	addEntrant("riiia", 1610, 3, currentPeriod, roster, &entries)                   // 9
+	addEntrant("vyzhael", 1337, 2, currentPeriod, roster, &entries)                 // \u218a
+	addEntrant("LittlePebble", 785, 1, currentPeriod, roster, &entries)             // \u218b
+	addEntrant("sbk96", 1341, 1, currentPeriod, roster, &entries)                   // 10
 
 	// Pair Entrants
 	fmt.Println()
-	pairings := [][]int{}
-	randPair(entrants, &pairings)
+	randPair(*roster, entries, &pairings)
 
 	// List Matches
-	printPairings(entrants, pairings)
+	printPairings(roster, pairings)
 }
 
-func addEntrant(username string, rating float64, gameRegCount uint8, entrants *[]entrant) {
-	e := newEntrant(username, rating, gameRegCount)
-	*entrants = append(*entrants, *e)
-}
+func addEntrant(username string, xrating float64, gameRegCount int, currentPeriod int, roster *prs.Roster, entries *[][]int) {
+	roster.AddCard(username, xrating, currentPeriod)
 
-// pass entrant.internalRank for both parameters
-func rkomi(bRank int, wRank int) int {
-	return 7 + bRank - wRank
-}
-
-func matchStr(black entrant, white entrant) string {
-	return black.username + " [" + black.displayRank + "] (B) vs. " +
-		white.username + " [" + white.displayRank + "] (W; " +
-		strconv.Itoa(rkomi(black.internalRank, white.internalRank)) + " komi)" +
-		" ([result](link))"
+	*entries = append(*entries, []int{roster.Len(), gameRegCount})
 }
 
 // pairs random players together until only one player has games remaining
-func randPair(entrants []entrant, pairings *[][]int) {
+func randPair(roster prs.Roster, entries [][]int, pairings *[][]int) {
 	// initialize seed
 	rand.Seed(time.Now().UnixNano())
 
@@ -134,11 +127,23 @@ func randPair(entrants []entrant, pairings *[][]int) {
 	fmt.Printf("pairings: %v\n\n", *pairings)
 }
 
-func printPairings(entrants []entrant, pairings [][]int) {
+func printPairings(roster *prs.Roster, pairings [][]int) {
 	// loop through pairings
 	for _, v := range pairings {
-		fmt.Println(matchStr(entrants[v[0]], entrants[v[1]]))
+		fmt.Println(matchStr(v[0], v[1], roster))
 	}
+}
+
+// pass entrant.internalRank for both parameters
+func rkomi(bRank int, wRank int) int {
+	return 7 + bRank - wRank
+}
+
+func matchStr(black int, white int, roster *prs.Roster) string {
+	return roster.GetName(black) + " [" + roster.DisplayRank(black) + "] | " +
+		roster.GetName(white) + " [" + roster.DisplayRank(white) + "] | " +
+		strconv.Itoa(rkomi(roster.GetRating(black), roster.GetRating(white))) +
+		" | [result](link)"
 }
 
 // Checks if a slice contains a given value and returns the number of hits
