@@ -14,11 +14,11 @@ type Card struct {
 }
 
 // NewCard creates a new playercard with default volatility
-func NewCard(name string, xrating float64, lastPeriod int) *Card {
+func NewCard(name string, xrating float64, ratingOrigin string, lastPeriod int) *Card {
 	c := new(Card)
 
 	c.name = name
-	c.rating = Xrtor(xrating)
+	c.rating = Xrtor(xrating, ratingOrigin)
 	c.lastPeriod = lastPeriod
 	c.volatility = 7
 
@@ -61,26 +61,60 @@ func (c Card) UpdateCard(wins int, losses int, draws int, period int) {
 }
 
 // Xrtor converts an external rating to prs rating
-func Xrtor(xrating float64) int {
-	// 12 points per stone in conversion
-	// [0, 13] == 1d
-	return int(math.Round((math.Log(xrating/525)*23.15)-30) * 12)
+func Xrtor(xrating float64, ratingOrigin string) int {
+	var rating int
+
+	switch ratingOrigin {
+	case "R":
+		rating = int(xrating)
+	case "DR":
+		rating = Drtor(int(xrating))
+	case "OGS":
+		// 14 points per stone in conversion
+		// [0, 13] == 1d
+		rating = int(math.Round((math.Log(xrating/525)*23.15)-30) * 14)
+	case "OGS-12":
+		// 12 points per stone in conversion
+		// [0, 13] == 1d
+		rating = int(math.Round((math.Log(xrating/525)*23.15)-30) * 12)
+	default:
+		rating = -126 // Should be 9k
+	}
+
+	return rating
+}
+
+// Drtor converts a display rating to prs rating
+func Drtor(dr int) int {
+	return dr - 420
+}
+
+// Rtodr converts a prs rating to a display rating
+func Rtodr(r int) int {
+	return r + 420
+}
+
+// Rtokd converts a prs rating to one in terms of kyu-dan
+// stones are 14 points apart
+// 0 = shodan
+func Rtokd(r int) string {
+	var kdstr string
+	rf64 := float64(r)
+
+	if r < 0 { // kyu
+		rf64 = math.Ceil(rf64 / -14)
+		kdstr = strconv.Itoa(int(rf64)) + "k"
+	} else { // dan
+		rf64 = math.Floor(rf64/14) + 1
+		kdstr = strconv.Itoa(int(rf64)) + "d"
+	}
+
+	return kdstr
 }
 
 // DisplayRank returns prs rating in terms of kyu-dan
 // stones are 14 points apart
 // 0 = shodan
 func (c Card) DisplayRank() string {
-	kdf := float64(c.rating)
-	var kda string
-
-	if c.rating < 0 { // kyu
-		kdf = math.Ceil(kdf / -14)
-		kda = strconv.Itoa(int(kdf)) + "k"
-	} else { // dan
-		kdf = math.Floor(kdf/14) + 1
-		kda = strconv.Itoa(int(kdf)) + "d"
-	}
-
-	return kda
+	return Rtokd(c.rating)
 }
