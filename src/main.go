@@ -17,19 +17,19 @@ func main() {
 	currentPeriod := 0 // const
 
 	// List of Entrants
-	addEntrant("Samraku", 1771, 4, currentPeriod, roster, &entries)                 // 0
-	addEntrant("illusory_deceit", 1278, 1, currentPeriod, roster, &entries)         // 1
-	addEntrant("KoBa", 1808, 3, currentPeriod, roster, &entries)                    // 2 https://online-go.com/user/view/85719
-	addEntrant("teapoweredrobot", 1488, 2, currentPeriod, roster, &entries)         // 3
-	addEntrant("He Who Walks in Shadows", 1775, 3, currentPeriod, roster, &entries) // 4
-	addEntrant("Kaworu Nagisa", 2368, 1, currentPeriod, roster, &entries)           // 5
-	addEntrant("pdg137", 1391, 1, currentPeriod, roster, &entries)                  // 6
-	addEntrant("wurfmau3", 2279, 7, currentPeriod, roster, &entries)                // 7
-	addEntrant("DashaTabasco", 1126, 3, currentPeriod, roster, &entries)            // 8
-	addEntrant("riiia", 1610, 3, currentPeriod, roster, &entries)                   // 9
-	addEntrant("vyzhael", 1337, 2, currentPeriod, roster, &entries)                 // \u218a
-	addEntrant("LittlePebble", 785, 1, currentPeriod, roster, &entries)             // \u218b
-	addEntrant("sbk96", 1341, 1, currentPeriod, roster, &entries)                   // 10
+	newEntry("Samraku", 1771, "OGS", 4, currentPeriod, roster, &entries)                 // 0
+	newEntry("illusory_deceit", 1278, "OGS", 1, currentPeriod, roster, &entries)         // 1
+	newEntry("KoBa", 1808, "OGS", 3, currentPeriod, roster, &entries)                    // 2 https://online-go.com/user/view/85719
+	newEntry("teapoweredrobot", 1488, "OGS", 2, currentPeriod, roster, &entries)         // 3
+	newEntry("He Who Walks in Shadows", 1775, "OGS", 3, currentPeriod, roster, &entries) // 4
+	newEntry("Kaworu Nagisa", 2368, "OGS", 1, currentPeriod, roster, &entries)           // 5
+	newEntry("pdg137", 1391, "OGS", 1, currentPeriod, roster, &entries)                  // 6
+	newEntry("wurfmau3", 2279, "OGS", 7, currentPeriod, roster, &entries)                // 7
+	newEntry("DashaTabasco", 1126, "OGS", 3, currentPeriod, roster, &entries)            // 8
+	newEntry("riiia", 1610, "OGS", 3, currentPeriod, roster, &entries)                   // 9
+	newEntry("vyzhael", 1337, "OGS", 2, currentPeriod, roster, &entries)                 // \u218a
+	newEntry("LittlePebble", 785, "OGS", 1, currentPeriod, roster, &entries)             // \u218b
+	newEntry("sbk96", 1341, "OGS", 1, currentPeriod, roster, &entries)                   // 10
 
 	// Pair Entrants
 	fmt.Println()
@@ -39,10 +39,14 @@ func main() {
 	printPairings(roster, pairings)
 }
 
-func addEntrant(username string, xrating float64, gameRegCount int, currentPeriod int, roster *prs.Roster, entries *[][]int) {
-	roster.AddCard(username, xrating, currentPeriod)
+func newEntry(username string, xrating float64, ratingOrigin string, gameRegCount int, currentPeriod int, roster *prs.Roster, entries *[][]int) {
+	roster.AddCard(username, xrating, ratingOrigin, currentPeriod)
 
 	*entries = append(*entries, []int{roster.Len(), gameRegCount})
+}
+
+func returningEntry(i int, gameRegCount int, roster *prs.Roster, entries *[][]int) {
+	*entries = append(*entries, []int{i, gameRegCount})
 }
 
 // pairs random players together until only one player has games remaining
@@ -128,15 +132,13 @@ func randPair(roster prs.Roster, entries [][]int, pairings *[][]int) {
 }
 
 func printPairings(roster *prs.Roster, pairings [][]int) {
+	fmt.Println("B | W | komi | result")
+	fmt.Println("- | - | ---- | ------")
+
 	// loop through pairings
 	for _, v := range pairings {
 		fmt.Println(matchStr(v[0], v[1], roster))
 	}
-}
-
-// pass entrant.internalRank for both parameters
-func rkomi(bRank int, wRank int) int {
-	return 7 + bRank - wRank
 }
 
 func matchStr(black int, white int, roster *prs.Roster) string {
@@ -144,6 +146,11 @@ func matchStr(black int, white int, roster *prs.Roster) string {
 		roster.GetName(white) + " [" + roster.DisplayRank(white) + "] | " +
 		strconv.Itoa(rkomi(roster.GetRating(black), roster.GetRating(white))) +
 		" | [result](link)"
+}
+
+// pass entrant.internalRank for both parameters
+func rkomi(bRank int, wRank int) int {
+	return 7 + bRank - wRank
 }
 
 // Checks if a slice contains a given value and returns the number of hits
