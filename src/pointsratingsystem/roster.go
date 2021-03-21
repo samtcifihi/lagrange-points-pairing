@@ -11,8 +11,8 @@ func NewRoster() *Roster {
 }
 
 // AddCard adds a new player card to the Roster
-func (r Roster) AddCard(name string, xrating float64, lastPeriod int) {
-	c := NewCard(name, xrating, lastPeriod)
+func (r Roster) AddCard(name string, xrating float64, ratingOrigin string, lastPeriod int) {
+	c := NewCard(name, xrating, ratingOrigin, lastPeriod)
 
 	r.list = append(r.list, c)
 }
@@ -37,12 +37,13 @@ func (r Roster) GetRating(i int) int {
 	return r.list[i].rating
 }
 
-// DisplayRank returns the rank in kyu-dan format for printing
+// DisplayRank returns the rank of card i in kyu-dan format for printing
 func (r Roster) DisplayRank(i int) string {
 	return r.list[i].DisplayRank()
 }
 
 // ListCards returns data for all cards for output
+// Currently null
 func (r Roster) ListCards(i ...int) string {
 	var out string
 
