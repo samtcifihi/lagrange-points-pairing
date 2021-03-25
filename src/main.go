@@ -39,81 +39,97 @@ func main() {
 	printPairings(roster, pairings)
 }
 
-func newEntry(username string, xrating float64, ratingOrigin string, gameRegCount int, currentPeriod int, roster *prs.Roster, entries *[][]int) {
-	roster.AddCard(username, xrating, ratingOrigin, currentPeriod)
+func newEntry(username string, xr float64, xro string, gamesRegged int, currentPeriod int, roster *prs.Roster, entries *[][]int) {
+	roster.AddCard(username, xr, xro, currentPeriod)
 
-	*entries = append(*entries, []int{roster.Len(), gameRegCount})
+	*entries = append(*entries, []int{roster.Len(), gamesRegged})
 }
 
-func returningEntry(i int, gameRegCount int, roster *prs.Roster, entries *[][]int) {
-	*entries = append(*entries, []int{i, gameRegCount})
+func returningEntry(i int, gamesRegged int, roster *prs.Roster, entries *[][]int) {
+	*entries = append(*entries, []int{i, gamesRegged})
 }
 
 // pairs random players together until only one player has games remaining
+// Restrictions:
+// * rating gap <= 120 (8 stones 8 points; 1/3 board)
+// * avoid duplicate matchups
+//   * strong prohibition
+//   * weak prohibition
 func randPair(roster prs.Roster, entries [][]int, pairings *[][]int) {
-	// initialize seed
+	// initialize seed and pairings slice
 	rand.Seed(time.Now().UnixNano())
+	pairings = nil
 
-	running := true // pairing players
-	finding := true // looking for a valid pairing
-	l := len(entrants)
-	pl := rand.Perm(l) // player list
-	c := 0             // count of players to pair
-	n := ""            // name of last player to pair
-	g := 0             // count of games to pair
+	genningPairings := true // pairing players
+	findingMatch := true    // looking for a valid matchup
+	dupProhib := 2          // 2: strong duplication avoidance; 1: weak duplication avoidance; 0: no duplication avoidance
 
-	for running {
-		// check if strong prohibition of duplicate matchups works
-		for i := range pl {
-			for j := range pl {
-				if finding &&
-					i != j &&
-					entrants[pl[i]].gameRegCount > 0 &&
-					entrants[pl[j]].gameRegCount > 0 {
-					if conVal(*pairings, []int{pl[i], pl[j]}) <= 0 &&
-						conVal(*pairings, []int{pl[j], pl[i]}) <= 0 {
+	randPlayers := rand.Perm(len(entries)) // player list
 
-						// pair
-						*pairings = append(*pairings, []int{pl[i], pl[j]})
-						entrants[pl[i]].gameRegCount--
-						entrants[pl[j]].gameRegCount--
-						finding = false
+	playersLeft := 0 // count of players to pair
+	gamesLeft := 0   // count of games to pair
+	lastPlayer := "" // name of last player to pair
+
+	for genningPairings {
+		for findingMatch {
+			for _, v := range randPlayers {
+				for _, w := range randPlayers {
+					if findingMatch &&
+						v != w && // No self-matching
+						roster.GetRatingGap(entries[v][0], entries[w][0]) <= 120 && // <= 8 stones 8 points
+						entries[v][1] > 0 && // No more games than signed up for
+						entries[w][1] > 0 { // No more games than signed up for
+						switch dupProhib {
+						case 2: // Strong Prohibition
+							for _, x := range *pairings {
+								if ((x[0] == entries[v][0] &&
+									x[1] == entries[w][0]) == false) &&
+									((x[0] == entries[w][0] &&
+										x[1] == entries[v][0]) == false) {
+									// pair
+									*pairings = append(*pairings, []int{randPlayers[v], randPlayers[w]})
+									entries[v][1]--
+									entries[w][1]--
+									findingMatch == false
+								} else {
+									break // continue finding a valid match
+								}
+							}
+						case 1: // Weak Prohibition
+							for _, x := range *pairings {
+								if (x[0] == entries[v][0] &&
+									x[1] == entries[w][0]) == false {
+									// pair
+									*pairings = append(*pairings, []int{randPlayers[v], randPlayers[w]})
+									entries[v][1]--
+									entries[w][1]--
+									findingMatch == false
+								} else {
+									break // continue finding a valid match
+								}
+							}
+						case 0: // No Prohibition
+							// pair
+							*pairings = append(*pairings, []int{randPlayers[0], randPlayers[1]})
+							entries[randPlayers[0]][1]--
+							entries[randPlayers[1]][1]--
+							findingMatch == false
+						default:
+							fmt.Println("Achievment Unlocked: -1 Restrictions on Duplicate Matchups!")
+						}
 					}
 				}
 			}
-		}
-
-		// check if weak prohibition of duplicate matchups works
-		if finding {
-			for i := range pl {
-				for j := range pl {
-					if finding &&
-						i != j &&
-						entrants[pl[i]].gameRegCount > 0 &&
-						entrants[pl[j]].gameRegCount > 0 &&
-						!(conVal(*pairings, []int{pl[i], pl[j]}) > 0) {
-						// pair
-						*pairings = append(*pairings, []int{pl[i], pl[j]})
-						entrants[pl[i]].gameRegCount--
-						entrants[pl[j]].gameRegCount--
-						finding = false
-					}
-				}
+			if findingMatch {
+				dupProhib--
 			}
-		}
-
-		// pair 0 with 1
-		if finding {
-			*pairings = append(*pairings, []int{pl[0], pl[1]})
-			entrants[pl[0]].gameRegCount--
-			entrants[pl[1]].gameRegCount--
 		}
 
 		// reinitialize variables
-		finding = true
+		findingMatch = true
 		pl = rand.Perm(l)
 
-		// check if all gameRegCount <= 0
+		// check if all gamesRegged <= 0
 		for _, v := range entrants {
 			if v.gameRegCount > 0 {
 				c++
@@ -126,7 +142,7 @@ func randPair(roster prs.Roster, entries [][]int, pairings *[][]int) {
 			running = false
 		}
 		c, g = 0, 0
-	} // end running loop
+	} // pairings genned
 
 	fmt.Printf("pairings: %v\n\n", *pairings)
 }

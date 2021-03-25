@@ -61,27 +61,28 @@ func (c Card) UpdateCard(wins int, losses int, draws int, period int) {
 }
 
 // Xrtor converts an external rating to prs rating
-func Xrtor(xrating float64, ratingOrigin string) int {
-	var rating int
+// xro (External Rating Origin) defines the behavior of the conversion
+func Xrtor(xr float64, xro string) int {
+	var r int
 
-	switch ratingOrigin {
+	switch xro {
 	case "R":
-		rating = int(xrating)
+		r = int(xr)
 	case "DR":
-		rating = Drtor(int(xrating))
+		r = Drtor(int(xr))
 	case "OGS":
 		// 14 points per stone in conversion
 		// [0, 13] == 1d
-		rating = int(math.Round((math.Log(xrating/525)*23.15)-30) * 14)
+		r = int(math.Round((math.Log(xr/525)*23.15)-30) * 14)
 	case "OGS-12":
 		// 12 points per stone in conversion
 		// [0, 13] == 1d
-		rating = int(math.Round((math.Log(xrating/525)*23.15)-30) * 12)
+		r = int(math.Round((math.Log(xr/525)*23.15)-30) * 12)
 	default:
-		rating = -126 // Should be 9k
+		r = -126 // Should be 9k
 	}
 
-	return rating
+	return r
 }
 
 // Drtor converts a display rating to prs rating
@@ -110,6 +111,11 @@ func Rtokd(r int) string {
 	}
 
 	return kdstr
+}
+
+// RatingGap returns the positive gap between two ratings
+func RatingGap(r1 int, r2 int) int {
+	return int(math.Abs(float64(r1 - r2)))
 }
 
 // DisplayRank returns prs rating in terms of kyu-dan
