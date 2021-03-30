@@ -9,7 +9,7 @@ import (
 type Card struct {
 	name       string
 	rating     int     // 14 points to a stone; 0 == 1d
-	volatility float64 // (0, 84]
+	volatility float64 // (2, 84]
 	lastPeriod int     // last period played in
 }
 
@@ -20,9 +20,14 @@ func NewCard(name string, xrating float64, ratingOrigin string, lastPeriod int) 
 	c.name = name
 	c.rating = Xrtor(xrating, ratingOrigin)
 	c.lastPeriod = lastPeriod
-	c.volatility = 7.0
+	c.volatility = 84.0
 
 	return c
+}
+
+// GetName returns c.name
+func (c Card) GetName() string {
+	return c.name
 }
 
 // UpdateCard processes the W-L record for a given rating period
