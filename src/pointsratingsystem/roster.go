@@ -1,5 +1,7 @@
 package pointsratingsystem
 
+import "strconv"
+
 // Roster holds a collection of player cards in a given prs system
 type Roster []*Card
 
@@ -15,6 +17,11 @@ func (r *Roster) AddCard(name string, xr float64, xro string, lastPeriod int) {
 	c := NewCard(name, xr, xro, lastPeriod)
 
 	*r = append(*r, c)
+}
+
+// UpdateCardFromRoster updates the rating for a given player
+func (r *Roster) UpdateCardFromRoster(id int, wins int, losses int, draws int, missedPeriods int) {
+	(*r)[id].UpdateCard(wins, losses, draws, missedPeriods)
 }
 
 // RetrieveCard returns the first card in Roster r with the passed name
@@ -76,7 +83,7 @@ func (r Roster) Inject(i int) {
 }
 
 // ListCards returns data for all cards for output
-// Currently null
+// Currently no option to specify cards
 func (r Roster) ListCards(i ...int) string {
 	var out string
 
@@ -88,6 +95,24 @@ func (r Roster) ListCards(i ...int) string {
 	// } else {
 	// // List r[i] for all i
 	// }
+
+	if len(i) == 0 {
+		for _, v := range r {
+			out += v.name + " [" +
+				Rtokd(v.rating) + "] (" + // kyu-dan rating
+				strconv.Itoa(Rtodr(v.rating)) + "); v: " + // display rating
+				strconv.FormatFloat(v.volatility, 'f', 1, 64) +
+				"\n"
+		}
+	} else {
+		for _, v := range i {
+			out += r[v].name + " [" +
+				Rtokd(r[v].rating) + "] (" + // kyu-dan rating
+				strconv.Itoa(Rtodr(r[v].rating)) + "); v: " + // display rating
+				strconv.FormatFloat(r[v].volatility, 'f', 1, 64) +
+				"\n"
+		}
+	}
 
 	return out
 }

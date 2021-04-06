@@ -37,16 +37,34 @@ func roundGenMacro(roster *prs.Roster, entries *[][]int, pairings *[][]int) {
 	newPlayer("LittlePebble", 785, "OGS", currentPeriod, roster)             // 11
 	newPlayer("sbk96", 1341, "OGS", currentPeriod, roster)                   // 12
 
-	// TODO: Rating Updating
+	// Rating Updating
+	updateRating(0, 4, 0, 0, 0, roster)  // Samraku
+	updateRating(1, 0, 0, 0, 0, roster)  // illusory_deceit
+	updateRating(2, 1, 1, 0, 0, roster)  // KoBa
+	updateRating(3, 0, 2, 0, 0, roster)  // teapoweredrobot
+	updateRating(4, 1, 2, 0, 0, roster)  // He Who Walks in Shadows
+	updateRating(5, 0, 0, 0, 0, roster)  // Kaworu Nagisa
+	updateRating(6, 0, 1, 0, 0, roster)  // pdg137
+	updateRating(7, 5, 2, 0, 0, roster)  // wurfmau3
+	updateRating(8, 0, 1, 0, 0, roster)  // DashaTabasco
+	updateRating(9, 2, 1, 0, 0, roster)  // riiia
+	updateRating(10, 0, 2, 0, 0, roster) // vyzhael
+	updateRating(11, 0, 0, 0, 0, roster) // LittlePebble
+	updateRating(12, 0, 1, 0, 0, roster) // sbk96
 
 	// TODO: Print Player Info (rating/record)
+	// fmt.Printf("\nafter rating updates:\n") // DEBUG
+	// fmt.Println(roster.ListCards())
 
 	// 2021-2 (2)
 	newEntry(0, 4, roster, entries) // Samraku
 	newEntry(3, 2, roster, entries) // teapoweredrobot
+	newEntry(6, 1, roster, entries) // pdg137
+	newEntry(7, 5, roster, entries) // wurfmau3
+
+	// *pairings = randPair(*roster, *entries) // Manually Pairing this round
 
 	fmt.Println()
-	*pairings = randPair(*roster, *entries)
 	printPairings(roster, *pairings)
 }
 
@@ -90,76 +108,114 @@ func randPair(roster prs.Roster, entries [][]int) [][]int {
 
 	// initialize seed and pairings slice
 	rand.Seed(time.Now().UnixNano())
+	randPlayers := rand.Perm(len(entries)) // player list
+
+	// pairing variables
+	nextPlayer := 0                                                                // next player to pair; card index
+	oppFit := make([][]int, len(entries))                                          // [[card, fit], [card, fit]]
+	fmt.Printf("\nentries address: %p\noppFit address: %p\n\n", &entries, &oppFit) // DEBUG
+	copy(oppFit, entries)
+	fmt.Printf("\nafter copy()\nentries address: %p\noppFit address: %p\n\n", &entries, &oppFit) // DEBUG
+	fmt.Println("oppFit: ", oppFit)                                                              // DEBUG
+	bestOpp := 0
+	bestOppFitRating := 0
+	// reverseColors := false
 	pairings := [][]int{}           // [[cardB, cardW], [cardB, cardW]]
 	fmt.Println("CREATED pairings") // DEBUG
 
+	// for loops
 	genningPairings := true // pairing players
-	findingMatch := true    // looking for a valid matchup
-	dupProhib := 2          // 2: strong duplication avoidance; 1: weak duplication avoidance; 0: no duplication avoidance
 
-	randPlayers := rand.Perm(len(entries)) // player list
-
+	// stats
 	playersLeft := 0 // count of players to pair
 	gamesLeft := 0   // count of games to pair
 	lastPlayer := "" // name of last player to pair
 
+	fmt.Println("randPair entries: ", entries) // DEBUG
+	fmt.Println()                              // DEBUG
+
 	for genningPairings {
-		for findingMatch {
-			for _, v := range randPlayers {
-				for _, w := range randPlayers {
-					if findingMatch &&
-						v != w && // No self-matching
-						roster.GetRatingGap(entries[v][0], entries[w][0]) <= 120 && // <= 8 stones 8 points
-						entries[v][1] > 0 && // No more games than signed up for
-						entries[w][1] > 0 { // No more games than signed up for
-						switch dupProhib {
-						case 2: // Strong Prohibition
-							for _, x := range pairings {
-								if ((x[0] == entries[v][0] &&
-									x[1] == entries[w][0]) == false) &&
-									((x[0] == entries[w][0] &&
-										x[1] == entries[v][0]) == false) {
-									// pair
-									pairings = append(pairings, []int{randPlayers[v], randPlayers[w]})
-									entries[v][1]--
-									entries[w][1]--
-									findingMatch = false
-								} else {
-									break // continue finding a valid match
-								}
-							}
-						case 1: // Weak Prohibition
-							for _, x := range pairings {
-								if (x[0] == entries[v][0] &&
-									x[1] == entries[w][0]) == false {
-									// pair
-									pairings = append(pairings, []int{randPlayers[v], randPlayers[w]})
-									entries[v][1]--
-									entries[w][1]--
-									findingMatch = false
-								} else {
-									break // continue finding a valid match
-								}
-							}
-						case 0: // No Prohibition
-							// pair
-							pairings = append(pairings, []int{randPlayers[0], randPlayers[1]})
-							entries[randPlayers[0]][1]--
-							entries[randPlayers[1]][1]--
-							findingMatch = false
-						default:
-							fmt.Println("Achievment Unlocked: -1 Restrictions on Duplicate Matchups!")
-						}
-					}
-				}
-			}
-			if findingMatch {
-				dupProhib--
+		fmt.Println("entered genningPairings for loop") // DEBUG
+
+		// Select player to pair
+		for p := range randPlayers {
+			fmt.Println("ENTER select player loop")
+			if entries[randPlayers[p]][1] > 0 { // gamesLeft !> 0
+				// pair player p
+				nextPlayer = entries[randPlayers[p]][0]
+
+				fmt.Printf("nextPlayer (after set): %v\n", nextPlayer) // DEBUG
+
+				break
 			}
 		}
 
+		fmt.Println("Finished finding nextPlayer") // DEBUG
+
+		// Rate opponents
+		for o := range oppFit {
+			fmt.Println("ENTER oppRatingLoop")                         // DEBUG
+			fmt.Printf("entries: %v\noppFit: %v\n\n", entries, oppFit) // DEBUG
+
+			oppFit[o][1] = 0 // re-initialize
+
+			if oppFit[o][0] == entries[nextPlayer][0] { // Prevent Self-Matching
+				fmt.Printf("before adding 0x1000 to oppFitValue:\nentries: %v\noppFit: %v\n\n", entries, oppFit) // DEBUG
+				oppFit[o][1] += 0x1000
+				fmt.Printf("after adding 0x1000 to oppFitValue:\nentries: %v\noppFit: %v\n\n", entries, oppFit) // DEBUG
+			}
+
+			if roster.GetRatingGap(nextPlayer, oppFit[o][0]) > 120 { // <= 8 stones 8 points
+				fmt.Println("ENTER GetRatingGap if")
+				fmt.Printf("before adding 0x1000 to oppFitValue:\nentries: %v\noppFit: %v\n\n", entries, oppFit) // DEBUG
+				oppFit[o][1] += 0x1000
+				fmt.Printf("after adding 0x1000 to oppFitValue:\nentries: %v\noppFit: %v\n\n", entries, oppFit) // DEBUG
+			}
+
+			// Duplicate Matches
+			for p := range pairings {
+				fmt.Println("ENTER duplicateMatchLoop")                    // DEBUG
+				fmt.Printf("entries: %v\noppFit: %v\n\n", entries, oppFit) // DEBUG
+
+				if pairings[p][0] == nextPlayer &&
+					pairings[p][1] == oppFit[o][0] { // 0x800 for duplicate match
+					oppFit[o][1] += 0x800
+				}
+
+				if pairings[p][0] == oppFit[o][0] &&
+					pairings[p][1] == nextPlayer { // 0x400 for reversed duplicate match
+					oppFit[o][1] += 0x400
+				}
+			}
+		}
+
+		// Select best opponent (lowest oppFit)
+		bestOppFitRating = 0x4000
+		for o := range randPlayers {
+			if oppFit[o][1] <= bestOppFitRating {
+				bestOpp = oppFit[o][0]
+				bestOppFitRating = oppFit[o][1]
+			}
+		}
+		fmt.Printf("\nbestOpp: %v\nFitRating: %v\n\n", bestOpp, bestOppFitRating) // DEBUG
+
+		// Pair
+		// TODO; check if reversing B-W gives better pairing
+		pairings = append(pairings, []int{nextPlayer, bestOpp})
+
+		// Update entries[p, o][1]
+		for e := range entries {
+			if entries[e][0] == nextPlayer ||
+				entries[e][0] == bestOpp {
+				entries[e][1]--
+			}
+		}
+
+		fmt.Println("CREATED new pairing")         // DEBUG
+		fmt.Println("randPair entries: ", entries) // DEBUG
+		fmt.Println()                              // DEBUG
+
 		// reinitialize variables
-		findingMatch = true
 		randPlayers = rand.Perm(len(entries))
 
 		// check if all gamesRegged <= 0
@@ -178,8 +234,11 @@ func randPair(roster prs.Roster, entries [][]int) [][]int {
 		playersLeft, gamesLeft = 0, 0
 	} // pairings genned
 
-	fmt.Printf("pairings: %v\n\n", pairings)
 	return pairings
+}
+
+func updateRating(card int, wins int, losses int, draws int, missedPeriods int, roster *prs.Roster) {
+	roster.UpdateCardFromRoster(card, wins, losses, draws, missedPeriods)
 }
 
 func printPairings(roster *prs.Roster, pairings [][]int) {

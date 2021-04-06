@@ -1,6 +1,7 @@
 package pointsratingsystem
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 )
@@ -33,21 +34,40 @@ func (c Card) GetName() string {
 // UpdateCard processes the W-L record for a given rating period
 // for a given card
 // volatility gives a triangular numbers approach
-func (c Card) UpdateCard(wins int, losses int, draws int, missedPeriods int) {
-	c.volatility = math.Min(c.volatility+(float64(missedPeriods)*7), 84) // Update volatility for inactivity
+func (c *Card) UpdateCard(wins int, losses int, draws int, missedPeriods int) {
+	fmt.Println("Beginning Update of ", c.name, " [", // DEBUG
+		Rtokd(c.rating), "] (",
+		strconv.Itoa(Rtodr(c.rating)), ") v: ",
+		strconv.FormatFloat(c.volatility, 'f', 1, 64))
+	fmt.Printf("W-L-D: %v-%v-%v\n", wins, losses, draws)
 
-	// Update c.rating based on Bayesian reasoning and the volatility
-	probUnderated := Underated(wins, losses, draws)
-	c.rating = int(math.Round(float64(c.rating) + (probUnderated * c.volatility)))
+	// If the player had any results this period
+	if !(wins == 0 &&
+		losses == 0 &&
+		draws == 0) {
 
-	c.volatility = c.volatility * 0.5 // enforce downward volatility bias
+		c.volatility = math.Min(c.volatility+(float64(missedPeriods)*3.5), 84.0) // Update volatility for inactivity
 
-	// c.volatility = c.volatility + ((inverse from above - 2) * 2) // Max 84
-	if probUnderated <= 0.5 {
-		c.volatility = math.Min(c.volatility+(((1.0/probUnderated)-2.0)*2.0), 84.0)
-	} else {
-		c.volatility = math.Min(c.volatility+(((1.0/(1.0-probUnderated))-2.0)*2.0), 84.0)
+		// Update c.rating based on Bayesian reasoning and the volatility
+		probUnderated := Underated(wins, losses, draws)
+		fmt.Println("P(Underated) = ", strconv.FormatFloat(probUnderated, 'f', 2, 64))
+
+		c.rating = int(math.Round(float64(c.rating) + (probUnderated * c.volatility) - ((1.0 - probUnderated) * c.volatility))) // prior rating + points for underated chance + points for overrated chance
+		c.volatility = (c.volatility * 0.5) + 1.5                                                                               // enforce downward volatility bias and make this step make volatility approach 3.0, where rating will change by 1 point on a (1, 0) record
+
+		// c.volatility = c.volatility + ((inverse from above - 2) * 1) // Max 84
+		if probUnderated <= 0.5 {
+			c.volatility = math.Min(c.volatility+(((1.0/probUnderated)-2.0)*1.0), 84.0) // 1.0 is a free parameter; may need slight decreasing
+		} else {
+			c.volatility = math.Min(c.volatility+(((1.0/(1.0-probUnderated))-2.0)*1.0), 84.0) // 1.0 is a free parameter; may need slight decreasing
+		}
 	}
+
+	fmt.Println("Completed Update of ", c.name, " [", // DEBUG
+		Rtokd(c.rating), "] (",
+		strconv.Itoa(Rtodr(c.rating)), ") v: ",
+		strconv.FormatFloat(c.volatility, 'f', 2, 64))
+	fmt.Println() // DEBUG
 }
 
 // Underated returns the probability that the player is underated
@@ -63,16 +83,55 @@ func Underated(wins int, losses int, draws int) float64 {
 			P(A | B) = P(B | 2/3 winning coin) / (P(B | 2/3 winning coin) + P(B | 1/3 winning coin))
 		*/
 
-		underated, overrated := biasCoin(wins, wins+losses)
+		probGivenUnderated, probGivenOverrated := resultExtremity(wins, wins+losses)
 
-		return underated / (underated + overrated)
+		// DEBUG
+		fmt.Println("probGivenUnderated: ", probGivenUnderated)
+		fmt.Println("probGivenOverrated: ", probGivenOverrated)
+
+		return probGivenUnderated / (probGivenUnderated + probGivenOverrated)
 	}
 
 	return (Underated(wins+draws, losses, 0) +
-		Underated(wins, losses+draws, 0)/2)
+		Underated(wins, losses+draws, 0)) / 2
+}
+
+// resultExtremity calculates how likely a result at least as extreme as
+// provided is, for both a 2/3 chance of hitting (winning), and a 1/3 chance of hitting.
+func resultExtremity(hitTarget int, sackSize int) (float64, float64) {
+	likelyHitProb, unlikelyHitProb := 0.0, 0.0
+
+	if hitTarget == sackSize-hitTarget {
+		likelyHitProb, unlikelyHitProb = 0.5, 0.5 // Not true, but gives the correct result in this case.
+	} else if hitTarget < sackSize-hitTarget { // hitTarget lower half (including middle) of sackSize
+		for n := 0; n <= hitTarget; n++ {
+			likelyHitProb += float64(combos(n, sackSize)) * math.Pow((2.0/3.0), float64(n)) * math.Pow((1.0/3.0), float64(sackSize-n))
+			unlikelyHitProb += float64(combos(n, sackSize)) * math.Pow((1.0/3.0), float64(n)) * math.Pow((2.0/3.0), float64(sackSize-n))
+		}
+	} else { // hitTarget upper half (excluding middle) of sackSize
+		for n := hitTarget; n <= sackSize; n++ {
+			likelyHitProb += float64(combos(n, sackSize)) * math.Pow((2.0/3.0), float64(n)) * math.Pow((1.0/3.0), float64(sackSize-n))
+			unlikelyHitProb += float64(combos(n, sackSize)) * math.Pow((1.0/3.0), float64(n)) * math.Pow((2.0/3.0), float64(sackSize-n))
+		}
+	}
+
+	return likelyHitProb, unlikelyHitProb
+}
+
+func combos(hits int, space int) int {
+	if (hits <= 0) || (hits == space) { // base case
+		return 1
+	}
+
+	// combos when the first index of space is not a hit,
+	// plus combos when the first index of space is a hit.
+	return combos(hits, (space-1)) + combos((hits-1), (space-1))
 }
 
 func biasCoin(hitTarget int, coins int) (float64, float64) {
+	// winHitTarget, lossHitTarget := wins, coins-wins
+	// hitTarget = wins
+
 	spreads := []int{}
 	for i := 0; i < coins; i++ {
 		spreads = append(spreads, 0)
@@ -84,36 +143,86 @@ func biasCoin(hitTarget int, coins int) (float64, float64) {
 	zeroes := coins
 	winningBiasHits, losingBiasHits, trials := 0, 0, 0
 
-	if (coins - zeroes) >= hitTarget {
-		winningBiasHits++
+	if hitTarget < coins-hitTarget {
+		if (coins - zeroes) <= hitTarget {
+			winningBiasHits++
+		}
+	} else {
+		if (coins - zeroes) >= hitTarget {
+			winningBiasHits++
+		}
 	}
-	if zeroes >= hitTarget {
-		losingBiasHits++
+	if hitTarget < coins-hitTarget {
+		if zeroes <= hitTarget {
+			losingBiasHits++
+		}
+	} else {
+		if zeroes >= hitTarget {
+			losingBiasHits++
+		}
 	}
 	trials++
+
+	fmt.Println("winningBiasHits", winningBiasHits, // DEBUG
+		"; losingBiasHits", losingBiasHits,
+		"; trials", trials)
 
 	for {
 		switch spreads[head] {
 		case 0:
 			spreads[head]++
 			zeroes--
-			if (coins - zeroes) >= hitTarget {
-				winningBiasHits++
+			if hitTarget < coins-hitTarget {
+				if (coins - zeroes) <= hitTarget {
+					winningBiasHits++
+				}
+			} else {
+				if (coins - zeroes) >= hitTarget {
+					winningBiasHits++
+				}
 			}
-			if zeroes >= hitTarget {
-				losingBiasHits++
+			if hitTarget < coins-hitTarget {
+				if zeroes <= hitTarget {
+					losingBiasHits++
+				}
+			} else {
+				if zeroes >= hitTarget {
+					losingBiasHits++
+				}
 			}
 			trials++
+			fmt.Println("spreads", spreads, // DEBUG
+				"; winningBiasHits", winningBiasHits,
+				"; losingBiasHits", losingBiasHits,
+				"; trials", trials)
+
 			carry = false
 		case 1:
 			spreads[head]++
-			if (coins - zeroes) >= hitTarget {
-				winningBiasHits++
+			if hitTarget < coins-hitTarget {
+				if (coins - zeroes) <= hitTarget {
+					winningBiasHits++
+				}
+			} else {
+				if (coins - zeroes) >= hitTarget {
+					winningBiasHits++
+				}
 			}
-			if zeroes >= hitTarget {
-				losingBiasHits++
+			if hitTarget < coins-hitTarget {
+				if zeroes <= hitTarget {
+					losingBiasHits++
+				}
+			} else {
+				if zeroes >= hitTarget {
+					losingBiasHits++
+				}
 			}
 			trials++
+			fmt.Println("spreads", spreads, // DEBUG
+				"; winningBiasHits", winningBiasHits,
+				"; losingBiasHits", losingBiasHits,
+				"; trials", trials)
+
 			carry = false
 		case 2:
 			spreads[head] = 0
