@@ -35,11 +35,9 @@ func (c Card) GetName() string {
 // for a given card
 // volatility gives a triangular numbers approach
 func (c *Card) UpdateCard(wins int, losses int, draws int, missedPeriods int) {
-	fmt.Println("Beginning Update of ", c.name, " [", // DEBUG
-		Rtokd(c.rating), "] (",
-		strconv.Itoa(Rtodr(c.rating)), ") v: ",
-		strconv.FormatFloat(c.volatility, 'f', 1, 64))
-	fmt.Printf("W-L-D: %v-%v-%v\n", wins, losses, draws)
+
+	fmt.Printf("%v: %v-%v-%v\n", c.name, wins, losses, draws)
+	fmt.Printf("prior rating: %v (%v) (vol = %v)\n", Rtodr(c.rating), Rtokd(c.rating), strconv.FormatFloat(c.volatility, 'f', 2, 64))
 
 	// If the player had any results this period
 	if !(wins == 0 &&
@@ -50,7 +48,6 @@ func (c *Card) UpdateCard(wins int, losses int, draws int, missedPeriods int) {
 
 		// Update c.rating based on Bayesian reasoning and the volatility
 		probUnderated := Underated(wins, losses, draws)
-		fmt.Println("P(Underated) = ", strconv.FormatFloat(probUnderated, 'f', 2, 64))
 
 		c.rating = int(math.Round(float64(c.rating) + (probUnderated * c.volatility) - ((1.0 - probUnderated) * c.volatility))) // prior rating + points for underated chance + points for overrated chance
 		c.volatility = (c.volatility * 0.5) + 1.5                                                                               // enforce downward volatility bias and make this step make volatility approach 3.0, where rating will change by 1 point on a (1, 0) record
@@ -63,11 +60,7 @@ func (c *Card) UpdateCard(wins int, losses int, draws int, missedPeriods int) {
 		}
 	}
 
-	fmt.Println("Completed Update of ", c.name, " [", // DEBUG
-		Rtokd(c.rating), "] (",
-		strconv.Itoa(Rtodr(c.rating)), ") v: ",
-		strconv.FormatFloat(c.volatility, 'f', 2, 64))
-	fmt.Println() // DEBUG
+	fmt.Printf("updated rating: %v (%v) (vol = %v)\n\n", Rtodr(c.rating), Rtokd(c.rating), strconv.FormatFloat(c.volatility, 'f', 2, 64))
 }
 
 // Underated returns the probability that the player is underated
@@ -84,10 +77,6 @@ func Underated(wins int, losses int, draws int) float64 {
 		*/
 
 		probGivenUnderated, probGivenOverrated := resultExtremity(wins, wins+losses)
-
-		// DEBUG
-		fmt.Println("probGivenUnderated: ", probGivenUnderated)
-		fmt.Println("probGivenOverrated: ", probGivenOverrated)
 
 		return probGivenUnderated / (probGivenUnderated + probGivenOverrated)
 	}

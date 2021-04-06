@@ -62,6 +62,12 @@ func roundGenMacro(roster *prs.Roster, entries *[][]int, pairings *[][]int) {
 	newEntry(6, 1, roster, entries) // pdg137
 	newEntry(7, 5, roster, entries) // wurfmau3
 
+	*pairings = append(*pairings, []int{7, 0})
+	*pairings = append(*pairings, []int{0, 7})
+	*pairings = append(*pairings, []int{6, 3})
+	*pairings = append(*pairings, []int{0, 3})
+	*pairings = append(*pairings, []int{3, 7})
+
 	// *pairings = randPair(*roster, *entries) // Manually Pairing this round
 
 	fmt.Println()
